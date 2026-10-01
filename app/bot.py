@@ -35,6 +35,12 @@ def main_menu_kb():
     return kb.as_markup()
 
 
+def back_to_menu_kb():
+    kb = InlineKeyboardBuilder()
+    kb.button(text="⬅ В главное меню", callback_data="back_to_main")
+    return kb.as_markup()
+
+
 WELCOME_TEXT = (
     "Привет! Я <b>SaverBot</b> 🐿 — твой личный финансовый помощник.\n\n"
     "Я помогу тебе экономить деньги и не забывать о важных списаниях.\n\n"
@@ -104,7 +110,7 @@ async def cb_contacts(call: CallbackQuery):
 @dp.callback_query(F.data == "menu_subs")
 async def cb_subs(call: CallbackQuery):
     await subscriptions.show_subscriptions_menu(call.message, edit=True)
-       await call.answer()
+    await call.answer()
 
 
 @dp.callback_query(F.data == "menu_prices")
@@ -123,12 +129,6 @@ async def cb_stats(call: CallbackQuery):
 async def cb_back_to_main(call: CallbackQuery):
     await call.message.edit_text(WELCOME_TEXT, reply_markup=main_menu_kb())
     await call.answer()
-
-
-def back_to_menu_kb():
-    kb = InlineKeyboardBuilder()
-    kb.button(text="⬅ В главное меню", callback_data="back_to_main")
-    return kb.as_markup()
 
 
 async def main():
