@@ -1,0 +1,43 @@
+name: Deploy to Server
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Deploy via SSH
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.SERVER_HOST }}
+          username: ${{ secrets.SERVER_USER }}
+          password: ${{ secrets.SERVER_PASSWORD }}
+          script: |
+            cd /opt/saver-bot || (mkdir -p /opt/saver-bot && cd /opt/saver-bot && git clone https://github.com/avo231092-netizen/saver-bot .)
+            cd /opt/saver-bot
+            git pull origin main
+            
+            # Create .env if missing
+            if [ ! -f .env ]; then
+              echo "BOT_TOKEN=${{ secrets.BOT_TOKEN }}" > .env
+              echo "ADMIN_IDS=${{ secrets.ADMIN_IDS }}" >> .env
+              echo "DB_PATH=/app/data/saver.db" >> .env
+              echo "TZ=Europe/Moscow" >> .env
+            fi
+            
+            # Install Docker if missing
+            if ! command -v docker &> /dev/null; then
+              curl -fsSL https://get.docker.com | sh
+              systemctl enable docker
+              systemctl start docker
+            fi
+            
+            # Build and restart
+            docker compose down
+            docker compose up -d --build
+            
+            # Show logs
+            docker compose logs --tail=20
