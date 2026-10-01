@@ -1,6 +1,7 @@
 import os
+import aiosqlite
 from aiogram import Router, F
-from aiogram.types import Message, CallbackQuery, LabeledPrice
+from aiogram.types import Message, CallbackQuery
 from aiogram.utils.keyboard import InlineKeyboardBuilder
 from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import State, StatesGroup
@@ -11,18 +12,9 @@ router = Router()
 ADMIN_PASSWORD = os.getenv("ADMIN_PASSWORD", "admin123")
 ADMIN_IDS = [int(x) for x in os.getenv("ADMIN_IDS", "").split(",") if x]
 
-# Pricing in Telegram Stars (XTR)
-PLANS = {
-    "trial": {"days": 7, "stars": 0, "title": "Пробный период", "desc": "7 дней бесплатно"},
-    "month": {"days": 30, "stars": 100, "title": "1 месяц Premium", "desc": "30 дней Premium"},
-    "year": {"days": 365, "stars": 999, "title": "1 год Premium", "desc": "365 дней Premium (выгода 17%)"},
-}
 
 class AdminAuth(StatesGroup):
     password = State()
-
-class PromoState(StatesGroup):
-    code = State()
 
 
 def is_admin(user_id: int) -> bool:
@@ -106,7 +98,6 @@ async def cb_admin_sections(call: CallbackQuery):
     for s in sections:
         status = "✅" if s[5] else "❌"
         kb.button(text=f"{status} {s[4]} {s[2]}", callback_data=f"sect_toggle_{s[0]}")
-    kb.button(text="➕ Добавить раздел", callback_data="sect_add")
     kb.button(text="⬅ Назад", callback_data="admin_back")
     kb.adjust(1)
     await call.message.edit_text(text, reply_markup=kb.as_markup())
