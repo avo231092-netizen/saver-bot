@@ -17,7 +17,7 @@ HEADERS = {
 
 
 def proxy_url(target: str) -> str:
-    return f"{WORKER_URL}/?url={quote(target, safe='')}
+    return f"{WORKER_URL}/?url={quote(target, safe='')}"
 
 
 async def parse(url: str) -> dict | None:
