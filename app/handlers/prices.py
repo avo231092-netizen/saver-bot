@@ -1,3 +1,4 @@
+import re
 from aiogram import Router, F
 from aiogram.filters import Command
 from aiogram.types import Message, CallbackQuery
@@ -14,13 +15,10 @@ WB_DOMAINS = [
     "wildberries.ru", "wildberries.am", "wildberries.by", "wildberries.kz",
     "wildberries.com", "wildberries.uz", "wildberries.ge", "wildberries.az",
     "wildberries.md", "wildberries.lv", "wildberries.lt", "wildberries.ee",
-    "www.wildberries.ru", "www.wildberries.am", "www.wildberries.by",
-    "www.wildberries.kz", "www.wildberries.com",
 ]
 OZON_DOMAINS = [
     "ozon.ru", "am.ozon.com", "ozon.com", "ozon.kz", "ozon.by",
-    "ozon.uz", "ozon.ge", "www.ozon.ru", "www.ozon.com",
-    "global.ozon.com", "ozon.am",
+    "ozon.uz", "ozon.ge", "global.ozon.com", "ozon.am",
 ]
 
 
@@ -43,6 +41,15 @@ def detect_marketplace(url: str):
     for d in OZON_DOMAINS:
         if d in url_lower:
             return "ozon"
+    return None
+
+
+def extract_url(text: str) -> str | None:
+    """Extract first URL from text message."""
+    # Match http(s)://... until whitespace or end of line
+    match = re.search(r'https?://[^\s<>"]+', text)
+    if match:
+        return match.group(0)
     return None
 
 
@@ -69,7 +76,8 @@ async def show_prices_menu(message, edit=False):
 async def cb_price_add(call: CallbackQuery, state: FSMContext):
     await call.message.edit_text(
         "Пришли ссылку на товар (Wildberries или Ozon):\n\n"
-        "<i>Поддерживаются все домены:\n"
+        "<i>Можно просто ссылку, или текст со ссылкой — я сам её найду.\n"
+        "Поддерживаются все домены:\n"
         "• wildberries.ru, .am, .by, .kz, .com\n"
         "• ozon.ru, am.ozon.com, ozon.com</i>",
         reply_markup=back_kb()
@@ -80,7 +88,16 @@ async def cb_price_add(call: CallbackQuery, state: FSMContext):
 
 @router.message(TrackState.url)
 async def proc_url(message: Message, state: FSMContext):
-    url = message.text.strip().split()[0]  # берем только ссылку, если текст с ней
+    url = extract_url(message.text or "")
+    if not url:
+        await message.answer(
+            "❌ Не нашёл ссылку в сообщении.\n\n"
+            "Пришли ссылку на товар с Wildberries или Ozon:\n"
+            "• wildberries.ru, .am, .by, .kz, .com\n"
+            "• ozon.ru, am.ozon.com, ozon.com\n\n"
+            "Попробуй ещё раз:"
+        )
+        return
     marketplace = detect_marketplace(url)
     if not marketplace:
         await message.answer(
@@ -159,6 +176,7 @@ async def cmd_tracked(message: Message):
     items = await db.list_tracked_items(message.from_user.id)
     if not items:
         await message.answer("Нет отслеживаемых товаров.")
+        return
     text = "<b>💰 Отслеживаемые товары</b>\n\n"
     for it in items:
         text += f"• <b>{it[2]}</b> — {it[4]}₽\n"
