@@ -1,0 +1,8 @@
+services:
+  saver-bot:
+    build: .
+    container_name: saver-bot
+    restart: unless-stopped
+    env_file: .env
+    volumes:
+      - ./data:/app/data
