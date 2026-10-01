@@ -9,6 +9,21 @@ from app.parsers import wildberries, ozon
 
 router = Router()
 
+# Supported domains
+WB_DOMAINS = [
+    "wildberries.ru", "wildberries.am", "wildberries.by", "wildberries.kz",
+    "wildberries.com", "wildberries.uz", "wildberries.ge", "wildberries.az",
+    "wildberries.md", "wildberries.lv", "wildberries.lt", "wildberries.ee",
+    "www.wildberries.ru", "www.wildberries.am", "www.wildberries.by",
+    "www.wildberries.kz", "www.wildberries.com",
+]
+OZON_DOMAINS = [
+    "ozon.ru", "am.ozon.com", "ozon.com", "ozon.kz", "ozon.by",
+    "ozon.uz", "ozon.ge", "www.ozon.ru", "www.ozon.com",
+    "global.ozon.com", "ozon.am",
+]
+
+
 class TrackState(StatesGroup):
     url = State()
     target = State()
@@ -18,6 +33,17 @@ def back_kb():
     kb = InlineKeyboardBuilder()
     kb.button(text="⬅ Назад", callback_data="menu_prices")
     return kb.as_markup()
+
+
+def detect_marketplace(url: str):
+    url_lower = url.lower()
+    for d in WB_DOMAINS:
+        if d in url_lower:
+            return "wildberries"
+    for d in OZON_DOMAINS:
+        if d in url_lower:
+            return "ozon"
+    return None
 
 
 async def show_prices_menu(message, edit=False):
@@ -30,7 +56,8 @@ async def show_prices_menu(message, edit=False):
         "<b>💰 Цены</b>\n\n"
         "Отслеживание цен на Wildberries и Ozon.\n\n"
         "• <b>Отслеживать товар</b> — пришли ссылку, и я буду следить за ценой\n"
-        "• <b>Мои товары</b> — список отслеживаемых позиций"
+        "• <b>Мои товары</b> — список отслеживаемых позиций\n\n"
+        "<i>Поддерживаются все домены: .ru, .am, .by, .kz, .com и другие</i>"
     )
     if edit:
         await message.edit_text(text, reply_markup=kb.as_markup())
@@ -42,7 +69,9 @@ async def show_prices_menu(message, edit=False):
 async def cb_price_add(call: CallbackQuery, state: FSMContext):
     await call.message.edit_text(
         "Пришли ссылку на товар (Wildberries или Ozon):\n\n"
-        "<i>Например: https://www.wildberries.ru/catalog/...</i>",
+        "<i>Поддерживаются все домены:\n"
+        "• wildberries.ru, .am, .by, .kz, .com\n"
+        "• ozon.ru, am.ozon.com, ozon.com</i>",
         reply_markup=back_kb()
     )
     await state.set_state(TrackState.url)
@@ -51,16 +80,26 @@ async def cb_price_add(call: CallbackQuery, state: FSMContext):
 
 @router.message(TrackState.url)
 async def proc_url(message: Message, state: FSMContext):
-    url = message.text.strip()
-    if "wildberries.ru" in url:
-        info = await wildberries.parse(url)
-    elif "ozon.ru" in url:
-        info = await ozon.parse(url)
-    else:
-        await message.answer("Поддерживаются только wildberries.ru и ozon.ru")
+    url = message.text.strip().split()[0]  # берем только ссылку, если текст с ней
+    marketplace = detect_marketplace(url)
+    if not marketplace:
+        await message.answer(
+            "❌ Не удалось определить маркетплейс.\n\n"
+            "Поддерживаются:\n"
+            "• Wildberries (.ru, .am, .by, .kz, .com и др.)\n"
+            "• Ozon (.ru, am.ozon.com, .com и др.)\n\n"
+            "Попробуй ещё раз:"
+        )
         return
+    if marketplace == "wildberries":
+        info = await wildberries.parse(url)
+    else:
+        info = await ozon.parse(url)
     if not info:
-        await message.answer("Не удалось получить цену. Попробуйте другую ссылку.")
+        await message.answer(
+            "⚠️ Не удалось получить цену. Возможно, товар недоступен или ссылка некорректна.\n\n"
+            "Попробуй другую ссылку:"
+        )
         return
     await state.update_data(url=url, title=info["title"], price=info["price"], marketplace=info["marketplace"])
     await message.answer(
@@ -120,7 +159,6 @@ async def cmd_tracked(message: Message):
     items = await db.list_tracked_items(message.from_user.id)
     if not items:
         await message.answer("Нет отслеживаемых товаров.")
-        return
     text = "<b>💰 Отслеживаемые товары</b>\n\n"
     for it in items:
         text += f"• <b>{it[2]}</b> — {it[4]}₽\n"
