@@ -45,8 +45,8 @@ async def parse(url: str) -> dict | None:
                         title = title_tag.get_text(strip=True) if title_tag else ""
                         if not title:
                             m = re.search(r'<title>([^<]+)</title>', html)
-            if m:
-                title = m.group(1).split(" — ")[0].split(" | ")[0]
+                            if m:
+                                title = m.group(1).split(" — ")[0].split(" | ")[0]
                         if not title:
                             title = "Товар Ozon"
                         
