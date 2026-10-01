@@ -1,0 +1,7 @@
+aiogram>=3.13
+aiosqlite>=0.19
+aiohttp>=3.9
+APScheduler>=3.10
+beautifulsoup4>=4.12
+lxml>=5.0
+python-dotenv>=1.0
