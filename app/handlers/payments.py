@@ -3,6 +3,7 @@ from aiogram.types import Message, CallbackQuery, LabeledPrice
 from aiogram.utils.keyboard import InlineKeyboardBuilder
 from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import State, StatesGroup
+from datetime import datetime
 from app import db
 
 router = Router()
@@ -33,7 +34,7 @@ def plans_kb():
 def back_kb():
     kb = InlineKeyboardBuilder()
     kb.button(text="⬅ Назад", callback_data="menu_pricing")
-    kb.as_markup()
+    return kb.as_markup()
 
 
 async def show_pricing_menu(message, edit=False):
